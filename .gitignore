@@ -1,0 +1,6 @@
+*.pkl
+*.ckpt
+*.fa*
+*.db
+*.gtf
+*.bam
