@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from gtfparse import read_gtf
 from sklearn.metrics import precision_recall_curve, auc
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import pickle
 from pkg_resources import resource_filename
 from pangolin.model import Pangolin, L, W, AR
@@ -19,8 +19,8 @@ class GencodeSpliceSiteEvaluator:
         """
         self.gtf_file = gencode_gtf
         self.fasta_file = fasta_file
-        # self.target_chromosomes = ['chr1', 'chr3', 'chr5', 'chr7', 'chr9']
-        self.target_chromosomes = ['chr1']
+        self.target_chromosomes = ['chr1', 'chr3', 'chr5', 'chr7', 'chr9']
+        # self.target_chromosomes = ['chr1']
         self.transcript_positions = {chrom: set() for chrom in self.target_chromosomes}
         
     def parse_gencode(self):

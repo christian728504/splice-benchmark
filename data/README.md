@@ -1,0 +1,2 @@
+gencode.v47.basic.annotation.gtf: https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/gencode.v47.basic.annotation.gtf.gz
+GRCh38.primary_assembly.genome.fa: https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz
