@@ -4,3 +4,4 @@
 *.db
 *.gtf
 *.bam
+__pycache__

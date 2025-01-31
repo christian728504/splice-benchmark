@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from gtfparse import read_gtf
 from sklearn.metrics import precision_recall_curve, auc
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 import pickle
 from pkg_resources import resource_filename
 from pangolin.model import Pangolin, L, W, AR
