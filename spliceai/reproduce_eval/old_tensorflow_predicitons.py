@@ -1,12 +1,11 @@
 import pickle
 import numpy as np
 import tensorflow as tf
-import h5py
 from keras.models import load_model
 from tqdm import tqdm
 
 def read_fasta(fasta_file):
-    """Parse FASTA file without using pyfaidx"""
+    """Parse FASTA file"""
     sequences = {}
     current_chrom = None
     current_seq = []
@@ -18,7 +17,7 @@ def read_fasta(fasta_file):
             if line.startswith('>'):
                 if current_chrom:
                     sequences[current_chrom] = ''.join(current_seq)
-                current_chrom = line[1:].split()[0]  # Get chromosome name
+                current_chrom = line[1:].split()[0]
                 current_seq = []
             else:
                 current_seq.append(line.upper())
@@ -29,31 +28,13 @@ def read_fasta(fasta_file):
     return sequences
 
 def generate_splice_predictions(fasta_file, model_dir, output_dir):
-    """
-    Generate SpliceAI predictions and save to pickle files.
-    
-    Args:
-        fasta_file: Path to reference genome FASTA
-        model_dir: Directory containing SpliceAI model files (spliceai1.h5 through spliceai5.h5)
-        output_dir: Directory to save output pickle files
-    """
-
-    # Configure TensorFlow to use all cores
-    num_cores = 16
-    config = tf.ConfigProto(
-        intra_op_parallelism_threads=num_cores,
-        inter_op_parallelism_threads=num_cores,
-        allow_soft_placement=True
-    )
-
-    sess = tf.Session(config=config)
-    tf.keras.backend.set_session(sess)
+    """Generate SpliceAI predictions"""
     
     # Parameters
     chromosomes = ['chr1', 'chr3', 'chr5', 'chr7', 'chr9']
     context = 15000
     step_size = 5000
-    batch_size = 128
+    batch_size = 32
     
     # Load genome
     genome = read_fasta(fasta_file)
@@ -62,7 +43,7 @@ def generate_splice_predictions(fasta_file, model_dir, output_dir):
     print("Loading models...")
     models = []
     for x in tqdm(range(1, 6)):
-        model = load_model(f'{model_dir}/spliceai{x}.h5')
+        model = load_model(f'{model_dir}/spliceai{x}.h5', compile=False)
         models.append(model)
 
     def one_hot_encode_batch(sequences):
@@ -81,7 +62,7 @@ def generate_splice_predictions(fasta_file, model_dir, output_dir):
     donor_predictions = {}
     
     print("Processing chromosomes...")
-    for chrom in tqdm(chromosomes, desc="Chromosomes"):
+    for chrom in chromosomes:
         if chrom not in genome:
             print(f"Warning: {chrom} not found in genome, skipping...")
             continue
@@ -99,9 +80,9 @@ def generate_splice_predictions(fasta_file, model_dir, output_dir):
         positions = range(0, padded_length - context, step_size)
         num_batches = (len(positions) + batch_size - 1) // batch_size
         
-        batch_pbar = tqdm(total=num_batches, desc=f"{chrom} batches")
-        
-        for batch_start in range(0, len(positions), batch_size):
+        for batch_start in tqdm(range(0, len(positions), batch_size), 
+                              total=num_batches, 
+                              desc=f"{chrom} batches"):
             batch_end = min(batch_start + batch_size, len(positions))
             batch_positions = positions[batch_start:batch_end]
             
@@ -112,7 +93,7 @@ def generate_splice_predictions(fasta_file, model_dir, output_dir):
             
             predictions = []
             for model in models:
-                pred = model.predict(x, batch_size=batch_size)
+                pred = model.predict(x, batch_size=len(sequences))
                 predictions.append(pred)
             
             y = np.mean(predictions, axis=0)
@@ -129,10 +110,6 @@ def generate_splice_predictions(fasta_file, model_dir, output_dir):
                     donor_predictions[chrom][center_start:center_end],
                     y[i, :step_size, 2]
                 )
-            
-            batch_pbar.update(1)
-        
-        batch_pbar.close()
         
         # Trim padding
         acceptor_predictions[chrom] = acceptor_predictions[chrom][context//3:-context//3]
@@ -157,3 +134,5 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     generate_splice_predictions(args.fasta, args.model_dir, args.output_dir)
+
+# python3 old_tensorflow_predictions.py --fasta GRCh38.primary_assembly.genome.fa --model-dir ../models --output-dir predictions
