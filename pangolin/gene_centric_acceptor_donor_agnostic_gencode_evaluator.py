@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from gtfparse import read_gtf
 from sklearn.metrics import precision_recall_curve, auc
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 import pickle
 from pkg_resources import resource_filename
 from pangolin.model import Pangolin, L, W, AR
@@ -22,6 +22,8 @@ class GencodeSpliceSiteEvaluator:
         self.target_chromosomes = ['chr1', 'chr3', 'chr5', 'chr7', 'chr9']
         # self.target_chromosomes = ['chr1']
         self.transcript_positions = {chrom: set() for chrom in self.target_chromosomes}
+        self.device = torch.device("cuda" if torch.cuda.is_available() else
+                    "rocm" if hasattr(torch.backends, "rocm") and torch.backends.rocm.is_available() else "cpu")
         
     def parse_gencode(self):
         """Parse GENCODE GTF to extract splice sites."""
@@ -90,12 +92,11 @@ class GencodeSpliceSiteEvaluator:
         for i in model_nums:
             for j in range(1, 6):
                 model = Pangolin(L, W, AR)
-                if torch.cuda.is_available():
-                    model.cuda()
-                    weights = torch.load(resource_filename("pangolin", f"models/final.{j}.{i}.3"))
-                else:
-                    weights = torch.load(resource_filename("pangolin", f"models/final.{j}.{i}.3"),
-                                    map_location=torch.device('cpu'))
+                model.to(self.device)  # Changed from .cuda()
+                weights = torch.load(
+                    resource_filename("pangolin", f"models/final.{j}.{i}.3"),
+                    map_location=self.device  # Changed from conditional cuda loading
+                )
                 model.load_state_dict(weights)
                 model.eval()
                 models.append(model)
@@ -148,7 +149,7 @@ class GencodeSpliceSiteEvaluator:
                     forward = one_hot_encode(seq, '+').T
                     batch_sequences.append(forward)
                 
-                x = torch.from_numpy(np.stack(batch_sequences)).float()
+                x = torch.from_numpy(np.stack(batch_sequences)).float().to(self.device)
                 if torch.cuda.is_available():
                     x = x.cuda()
                 
