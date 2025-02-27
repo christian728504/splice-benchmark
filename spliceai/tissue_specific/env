@@ -1,0 +1,1 @@
+singularity exec --nv -B /data,/zata /zata/zippy/ramirezc/singularity-images/splice-benchmark.sif jupyter lab --port=8888 --ip=0.0.0.0 --no-browser --notebook-dir=/data/zusers/ramirezc
